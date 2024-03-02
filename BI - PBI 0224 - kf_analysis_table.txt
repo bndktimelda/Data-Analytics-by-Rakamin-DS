@@ -1,0 +1,65 @@
+CREATE TABLE kf_final_transaction
+(
+    transaction_id varchar,
+    trx_date date,
+    branch_id integer,
+    customer_name varchar,
+    product_id varchar,
+    price integer,
+    discount_percentage double precision,
+    rating double precision
+)
+
+CREATE TABLE kf_inventory
+(
+    inventory_id varchar,
+    branch_id integer,
+    product_id varchar,
+    product_name varchar,
+    opname_stock integer
+)
+
+
+CREATE TABLE kf_kantor_cabang
+(
+    branch_id integer,
+    branch_category varchar,
+    branch_name varchar,
+    kota varchar,
+    provinsi varchar,
+    rating double precision
+)
+
+CREATE TABLE kf_product
+(
+    product_id varchar,
+    product_name varchar,
+    product_category varchar,
+    price integer
+)
+
+CREATE TABLE kf_trx AS(
+SELECT customer_name, product_id, price, transaction_id, trx_date, branch_name, kota, provinsi, 
+y.branch_id, y.rating AS rating_cabang, x.rating AS rating_trx
+FROM kf_final_transaction x
+JOIN kf_kantor_cabang y ON x.branch_id = y.branch_id
+
+CREATE TABLE kf_calc AS (
+SELECT x.product_id, product_name, x.price, discount_percentage, (x.price*(1-discount_percentage)) AS net_sales,
+CASE
+	WHEN x.price <= 50000 THEN 0.1
+	WHEN x.price > 50000 AND x.price <=100000 THEN 0.15
+	WHEN x.price > 100000 AND x.price <= 300000 THEN 0.2
+	WHEN x.price > 300000 AND x.price <= 500000 THEN 0.25
+	WHEN x.price > 500000 THEN 0.30
+END AS percent_gross_profit
+FROM kf_final_transaction x
+JOIN kf_product y ON x.price = y.price)
+
+CREATE TABLE kf_final_trx AS(
+SELECT customer_name, transaction_id, trx_date, rating_trx,
+branch_name, kota, provinsi, branch_id, rating_cabang, 
+x.product_id, product_name, x.price, discount_percentage, actual_sales, percent_gross_profit, 
+actual_sales*percent_gross_profit AS actual_profit
+FROM kf_calc x
+JOIN kf_trx y ON x.price=y.price 
